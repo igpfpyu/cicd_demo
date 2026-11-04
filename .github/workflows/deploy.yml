@@ -1,0 +1,49 @@
+name: Frontend CI
+
+on:
+  push:
+    tags:
+      - 'v*'   # 匹配所有以 v 开头的标签，如 v1.0.0
+  pull_request:
+    branches: [ "main" ] # 当向 main 分支发起 PR 时也触发
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 拉取代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 设置 Node.js 环境（建议开启 cache 加速）
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # 根据你的项目选择版本
+          cache: 'npm' # 如果你的项目用 yarn 或 pnpm，这里相应修改
+
+      # 3. 安装依赖
+      - name: Install dependencies
+        run: npm ci # 比 npm install 更快、更可靠，适合 CI 环境
+
+      # 4. 代码检查 (Lint) - 如果项目有配置
+      - name: Run Linter
+        run: npm run lint
+
+      # 5. 运行测试 - 如果项目有配置
+      - name: Run Tests
+        run: npm run test -- --watchAll=false
+
+      # 6. 构建项目
+      - name: Build
+        run: npm run build
+
+      - name: Upload dist to Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "dist/*"          # 你本地构建输出的目录
+          target: "/www/wwwroot/test_project/"   # 服务器上的目标路径
