@@ -111,6 +111,18 @@ jobs:
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
             dist/ \
             "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
+      # 13. 检查 Nginx 容器
+      - name: Verify Nginx Container
+        env:
+          SERVER_HOST: ${{ secrets.VPS_HOST }}
+          SERVER_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh \
+            -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            'docker ps --filter "name=nginx"'
 
       # 13. 发布完成
       - name: Deployment Success
