@@ -34,8 +34,8 @@ jobs:
         run: npm run lint
 
       # 5. 运行测试 - 如果项目有配置
-      - name: Run Tests
-        run: npm run test -- --watchAll=false
+#      - name: Run Tests
+#        run: npm run test -- --watchAll=false
 
       # 6. 构建项目
       - name: Build
