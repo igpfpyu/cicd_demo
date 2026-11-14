@@ -90,8 +90,8 @@ jobs:
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
             "$SERVER_USER@$SERVER_HOST" \
-            'docker restart my-nginx &&
-             docker ps --filter "name=^/my-nginx$" --filter "status=running" --format "{{.Names}}" | grep -qx my-nginx'
+            'docker restart nginx &&
+             docker ps --filter "name=^/nginx$" --filter "status=running" --format "{{.Names}}" | grep -qx nginx'
 
       # 9. 部署完成
       - name: Deployment Success
