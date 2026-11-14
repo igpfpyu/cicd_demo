@@ -23,44 +23,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Node.js
+      # 2. 配置 Node.js 和 Yarn
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: yarn
 
-      # 3. 启用 Yarn
-      - name: Enable Corepack
+      - name: Setup Yarn
         run: |
           corepack enable
           corepack prepare yarn@1.22.22 --activate
 
-      # 4. 检查环境
-      - name: Check Environment
-        run: |
-          node -v
-          yarn -v
-
-      # 5. 安装依赖
+      # 3. 安装依赖
       - name: Install Dependencies
         run: yarn install --frozen-lockfile
 
-      # 6. 代码检查
+      # 4. 代码检查
       - name: Lint
         run: yarn lint
 
-      # 7. 项目构建
+      # 5. 构建项目
       - name: Build
         run: yarn build
 
-      # 8. 安装 SSH 和 rsync
-      - name: Install Deploy Tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openssh-client rsync
-
-      # 9. 配置 SSH
+      # 6. 配置 SSH
       - name: Configure SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
@@ -75,56 +62,38 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      # 10. 测试 SSH 连接
-      - name: Test SSH Connection
-        env:
-          SERVER_HOST: ${{ secrets.VPS_HOST }}
-          SERVER_USER: ${{ secrets.VPS_USER }}
-        run: |
-          ssh \
-            -i ~/.ssh/id_ed25519 \
-            -o BatchMode=yes \
-            -o StrictHostKeyChecking=yes \
-            "$SERVER_USER@$SERVER_HOST" \
-            "echo SSH connection successful"
-
-      # 11. 创建服务器部署目录
-      - name: Prepare Deploy Directory
-        env:
-          SERVER_HOST: ${{ secrets.VPS_HOST }}
-          SERVER_USER: ${{ secrets.VPS_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-        run: |
-          ssh \
-            -i ~/.ssh/id_ed25519 \
-            "$SERVER_USER@$SERVER_HOST" \
-            "mkdir -p '$DEPLOY_PATH'"
-
-      # 12. 上传前端构建产物
+      # 7. 上传构建产物
       - name: Deploy
         env:
           SERVER_HOST: ${{ secrets.VPS_HOST }}
           SERVER_USER: ${{ secrets.VPS_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            "mkdir -p '$DEPLOY_PATH'"
+
           rsync -avz \
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
             dist/ \
             "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
-      # 13. 检查 Nginx 容器
-      - name: Verify Nginx Container
+
+      # 8. 重启并验证 Nginx
+      - name: Restart Nginx
         env:
           SERVER_HOST: ${{ secrets.VPS_HOST }}
           SERVER_USER: ${{ secrets.VPS_USER }}
         run: |
-          ssh \
-            -i ~/.ssh/id_ed25519 \
+          ssh -i ~/.ssh/id_ed25519 \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
             "$SERVER_USER@$SERVER_HOST" \
-            'docker ps --filter "name=nginx"'
+            'docker restart my-nginx &&
+             docker ps --filter "name=^/my-nginx$" --filter "status=running" --format "{{.Names}}" | grep -qx my-nginx'
 
-      # 13. 发布完成
+      # 9. 部署完成
       - name: Deployment Success
         run: |
           echo "Frontend deployment successful!"
